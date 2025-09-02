@@ -1,11 +1,4 @@
 authentik:
-  # Use external secret for the secret key
-  secret_key:
-    valueFrom:
-      secretKeyRef:
-        name: authentik-secret-key
-        key: AUTHENTIK_SECRET_KEY
-
   # Disable built-in PostgreSQL and Redis
   postgresql:
     enabled: false
@@ -13,57 +6,22 @@ authentik:
   redis:
     enabled: false
 
-  # Environment variables
-  envValueFrom:
-    AUTHENTIK_POSTGRESQL__HOST:
-      secretKeyRef:
-        name: authentik-db-secret
-        key: AUTHENTIK_POSTGRESQL__HOST
-    AUTHENTIK_POSTGRESQL__NAME:
-      secretKeyRef:
-        name: authentik-db-secret
-        key: AUTHENTIK_POSTGRESQL__NAME
-    AUTHENTIK_POSTGRESQL__USER:
-      secretKeyRef:
-        name: authentik-db-secret
-        key: AUTHENTIK_POSTGRESQL__USER
-    AUTHENTIK_POSTGRESQL__PASSWORD:
-      secretKeyRef:
-        name: authentik-db-secret
-        key: AUTHENTIK_POSTGRESQL__PASSWORD
-    AUTHENTIK_REDIS__HOST:
-      secretKeyRef:
-        name: authentik-redis-secret
-        key: AUTHENTIK_REDIS__HOST
-  
-  envFrom:
-    AUTHENTIK_LISTEN__HTTP: "0.0.0.0:9000"
-    AUTHENTIK_LISTEN__HTTPS: "0.0.0.0:9443"
+  # External database configuration
+  env:
+    AUTHENTIK_POSTGRESQL__HOST: "authentik-cluster-authentik-db.cjm8q4caabvj.ap-south-1.rds.amazonaws.com"
+    AUTHENTIK_POSTGRESQL__NAME: "authentik"
+    AUTHENTIK_POSTGRESQL__USER: "authentik"
+    AUTHENTIK_POSTGRESQL__PASSWORD: "MySecureDBPassword123!"
+    AUTHENTIK_REDIS__HOST: "authentik-cluster-authentik-redis.qsblbh.ng.0001.aps1.cache.amazonaws.com"
+    AUTHENTIK_SECRET_KEY: "this-is-a-very-long-secret-key-for-authentik-security-purposes"
 
-server:
-  replicas: 1
-
-  service:
-    type: LoadBalancer
-    annotations:
-      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-
-worker:
-  replicas: 1
-
-resources:
   server:
-    requests:
-      memory: "256Mi"
-      cpu: "100m"
-    limits:
-      memory: "512Mi"
-      cpu: "500m"
+    replicas: 1
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+        service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+
   worker:
-    requests:
-      memory: "256Mi"
-      cpu: "100m"
-    limits:
-      memory: "512Mi"
-      cpu: "500m"
+    replicas: 1

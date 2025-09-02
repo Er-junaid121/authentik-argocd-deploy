@@ -36,6 +36,9 @@ command -v kubectl >/dev/null 2>&1 || { print_error "kubectl is required but not
 
 print_success "All prerequisites found"
 
+# Change to project root directory
+cd "$(dirname "$0")/.."
+
 # Set variables
 TERRAFORM_DIR="./terraform"
 CLUSTER_NAME=${CLUSTER_NAME:-"authentik-cluster"}
@@ -116,32 +119,45 @@ if [ -z "$ARGOCD_PASSWORD" ]; then
     print_status "You can get it later with: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\" | base64 -d"
 fi
 
-# Get LoadBalancer URLs
-print_status "Getting service URLs..."
+# Install NGINX Ingress Controller
+print_status "Installing NGINX Ingress Controller..."
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+    --namespace ingress-nginx \
+    --create-namespace \
+    --set controller.service.type=LoadBalancer \
+    --set controller.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"="nlb" \
+    --set controller.service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-scheme"="internet-facing"
+
+# Wait for NGINX ingress controller to be ready
+print_status "Waiting for NGINX ingress controller to be ready..."
+kubectl wait --namespace ingress-nginx \
+    --for=condition=ready pod \
+    --selector=app.kubernetes.io/component=controller \
+    --timeout=300s
+
+# Get NGINX LoadBalancer URL
+print_status "Getting NGINX LoadBalancer URL..."
 echo "Waiting for LoadBalancer to be ready..."
 sleep 30
 
-ARGOCD_URL=""
+NGINX_URL=""
 for i in {1..20}; do
-    ARGOCD_URL=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-    if [ ! -z "$ARGOCD_URL" ]; then
+    NGINX_URL=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+    if [ ! -z "$NGINX_URL" ]; then
         break
     fi
-    echo "Waiting for ArgoCD LoadBalancer... ($i/20)"
+    echo "Waiting for NGINX LoadBalancer... ($i/20)"
     sleep 15
 done
-
-cd ..
 
 echo ""
 print_success "Deployment completed successfully!"
 echo ""
 echo "📋 Access Information:"
-if [ ! -z "$ARGOCD_URL" ]; then
-    echo "   ArgoCD URL: http://$ARGOCD_URL"
-else
-    echo "   ArgoCD URL: Run 'kubectl get svc argocd-server -n argocd' to get the LoadBalancer URL"
-fi
+echo "   ArgoCD (Port-forward): kubectl port-forward svc/argocd-server -n argocd 8080:80"
+echo "   ArgoCD Local URL: http://localhost:8080"
 echo "   ArgoCD Username: admin"
 if [ ! -z "$ARGOCD_PASSWORD" ]; then
     echo "   ArgoCD Password: $ARGOCD_PASSWORD"
@@ -149,10 +165,18 @@ else
     echo "   ArgoCD Password: Run 'kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\" | base64 -d'"
 fi
 echo ""
-echo "🔧 Next steps:"
-echo "   1. Access ArgoCD web interface"
-echo "   2. Deploy Authentik application via ArgoCD"
-echo "   3. Configure Authentik once it's running"
+if [ ! -z "$NGINX_URL" ]; then
+    echo "   NGINX Ingress LoadBalancer: http://$NGINX_URL"
+else
+    echo "   NGINX Ingress: Run 'kubectl get svc ingress-nginx-controller -n ingress-nginx' to get the LoadBalancer URL"
+fi
 echo ""
-echo "🚀 To deploy Authentik via ArgoCD:"
+echo "🔧 Next steps:"
+echo "   1. Deploy Authentik: kubectl apply -f argocd/applications/authentik.yaml"
+echo "   2. Apply ingress: kubectl apply -f k8s-manifests/ingress-resources.yaml"
+echo "   3. Access Authentik via NGINX LoadBalancer URL"
+echo "   4. Access ArgoCD via port-forward for management"
+echo ""
+echo "🚀 Quick deployment commands:"
 echo "   kubectl apply -f argocd/applications/authentik.yaml"
+echo "   kubectl apply -f k8s-manifests/ingress-resources.yaml"

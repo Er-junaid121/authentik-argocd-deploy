@@ -8,12 +8,30 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Er-junaid121/authentik-argocd-deploy.git
-    targetRevision: HEAD
-    path: argocd/charts/authentik
+    repoURL: https://charts.goauthentik.io
+    chart: authentik
+    targetRevision: 2024.8.3
     helm:
-      valueFiles:
-      - values.yaml
+      values: |
+        authentik:
+          postgresql:
+            enabled: false
+          redis:
+            enabled: false
+          secret_key: "this-is-a-very-long-secret-key-for-authentik-security-purposes"
+          postgresql:
+            host: "authentik-cluster-authentik-db.cjm8q4caabvj.ap-south-1.rds.amazonaws.com"
+            name: "authentik"
+            user: "authentik"
+            password: "MySecureDBPassword123!"
+          redis:
+            host: "authentik-cluster-authentik-redis.qsblbh.ng.0001.aps1.cache.amazonaws.com"
+        server:
+          replicas: 1
+          service:
+            type: ClusterIP
+        worker:
+          replicas: 1
   destination:
     server: https://kubernetes.default.svc
     namespace: authentik

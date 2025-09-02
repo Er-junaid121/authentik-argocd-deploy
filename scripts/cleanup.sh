@@ -29,7 +29,7 @@ print_error() {
 
 TERRAFORM_DIR="./terraform"
 CLUSTER_NAME=${CLUSTER_NAME:-"authentik-cluster"}
-AWS_REGION=${AWS_REGION:-"us-west-2"}
+AWS_REGION=${AWS_REGION:-"ap-south-1"}
 
 echo ""
 print_warning "This will destroy all AWS resources created for this project!"
@@ -47,9 +47,20 @@ fi
 print_status "Attempting to configure kubectl..."
 aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME 2>/dev/null || print_warning "Could not configure kubectl (cluster may not exist)"
 
+# Change to project root directory
+cd "$(dirname "$0")/.."
+
+# Delete NGINX ingress controller
+print_status "Deleting NGINX ingress controller..."
+helm uninstall ingress-nginx -n ingress-nginx || print_warning "Could not delete NGINX ingress controller"
+
+# Delete ingress resources
+print_status "Deleting ingress resources..."
+kubectl delete -f "k8s-manifests/ingress-resources.yaml" --ignore-not-found=true || print_warning "Could not delete ingress resources"
+
 # Delete ArgoCD applications
 print_status "Deleting ArgoCD applications..."
-kubectl delete -f argocd/applications/authentik.yaml --ignore-not-found=true || print_warning "Could not delete Authentik application"
+kubectl delete -f "argocd/applications/authentik.yaml" --ignore-not-found=true || print_warning "Could not delete Authentik application"
 
 # Wait for applications to be cleaned up
 print_status "Waiting for resources to be cleaned up..."
@@ -57,7 +68,7 @@ sleep 30
 
 # Delete any remaining LoadBalancer services to avoid orphaned AWS resources
 print_status "Cleaning up LoadBalancer services..."
-kubectl delete svc --all-namespaces --selector="type=LoadBalancer" --ignore-not-found=true || print_warning "Could not delete LoadBalancer services"
+kubectl delete svc --all-namespaces --field-selector spec.type=LoadBalancer --ignore-not-found=true || print_warning "Could not delete LoadBalancer services"
 
 # Wait for LoadBalancers to be cleaned up
 sleep 60
