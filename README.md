@@ -73,17 +73,23 @@ chmod +x scripts/deploy.sh
 ./scripts/deploy.sh
 ```
 
-### 5. Deploy Authentik and Ingress
+### 5. Fully Automated Deployment
 
-After the infrastructure is ready:
+The deployment script now handles everything automatically:
 
 ```bash
-# Deploy Authentik via ArgoCD
-kubectl apply -f argocd/applications/authentik.yaml
-
-# Apply ingress resources
-kubectl apply -f k8s-manifests/ingress-resources.yaml
+# Single command deployment - no manual steps required
+./scripts/deploy.sh
 ```
+
+The script automatically:
+- Deploys infrastructure with Terraform
+- Configures kubectl and waits for cluster readiness
+- Installs ArgoCD and NGINX ingress controller
+- Generates secure random secrets with correct database password
+- Deploys Authentik application via ArgoCD
+- Applies ingress resources
+- Provides all access information
 
 ## Access
 
@@ -101,7 +107,7 @@ kubectl apply -f k8s-manifests/ingress-resources.yaml
 ## Project Structure
 
 ```
-authentik-argocd-aws/
+authentik-argocd-deploy/
 ├── terraform/              # Infrastructure as Code
 │   ├── main.tf             # Main Terraform configuration
 │   ├── variables.tf        # Variable definitions
@@ -110,13 +116,19 @@ authentik-argocd-aws/
 │   └── terraform.tfvars.example
 ├── argocd/                 # ArgoCD configurations
 │   ├── applications/       # ArgoCD applications
-│   └── charts/authentik/   # Authentik Helm chart
+│   │   ├── argocd.yaml     # ArgoCD self-management (optional)
+│   │   └── authentik.yaml  # Authentik application
+│   └── values.yaml         # ArgoCD Helm values
 ├── k8s-manifests/          # Kubernetes manifests
+│   ├── secrets/            # Secret management (deprecated - now dynamic)
+│   │   └── README.md       # Secret management documentation
 │   ├── ingress-resources.yaml  # Ingress configurations
 │   └── nginx-ingress.yaml      # NGINX ingress setup
-├── scripts/                # Deployment scripts
-│   ├── deploy.sh          # Main deployment script
-│   └── cleanup.sh         # Cleanup script
+├── scripts/                # Deployment and management scripts
+│   ├── deploy.sh          # Main deployment script (fully automated)
+│   ├── cleanup.sh         # Comprehensive cleanup script
+│   ├── generate-secrets.sh # Dynamic secret generation
+│   └── show-secrets.sh    # Secret retrieval utility
 └── README.md
 ```
 
@@ -235,8 +247,26 @@ kubectl run -it --rm debug --image=postgres:15 --restart=Never -- psql -h <RDS_E
 To destroy all resources:
 
 ```bash
-chmod +x scripts/cleanup.sh
+# Comprehensive cleanup (recommended)
 ./scripts/cleanup.sh
+
+# Or direct Terraform destroy
+cd terraform
+terraform destroy
+```
+
+## Secret Management
+
+Secrets are now generated dynamically during deployment:
+
+```bash
+# View all secrets and access information
+./scripts/show-secrets.sh
+
+# Secrets are automatically generated with:
+# - Random 50-character Authentik secret key
+# - Database password from terraform.tfvars
+# - Infrastructure endpoints from Terraform outputs
 ```
 
 ## Contributing
