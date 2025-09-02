@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Project Structure Setup Script
+
+PROJECT_NAME="AUTHENTIC-ARGOCD-DEPLOY"
+echo "📁 Creating project structure for $PROJECT_NAME..."
+
+# Create main project directory
+#mkdir -p $PROJECT_NAME
+#cd $PROJECT_NAME
+
+# Create directory structure
+mkdir -p terraform
+mkdir -p argocd/applications
+mkdir -p argocd/charts/authentik/templates
+mkdir -p argocd/bootstrap
+mkdir -p k8s-manifests/namespaces
+mkdir -p k8s-manifests/authentik
+mkdir -p k8s-manifests/argocd
+mkdir -p scripts
+
+# Create empty files that we'll populate
+touch terraform/main.tf
+touch terraform/variables.tf
+touch terraform/outputs.tf
+touch terraform/providers.tf
+touch terraform/terraform.tfvars.example
+touch argocd/values.yaml
+touch argocd/applications/argocd.yaml
+touch argocd/applications/authentik.yaml
+touch argocd/charts/authentik/Chart.yaml
+touch argocd/charts/authentik/values.yaml
+touch scripts/deploy.sh
+touch scripts/cleanup.sh
+touch README.md
+touch .gitignore
+
+echo "✅ Project structure created successfully!"
+echo ""
+echo "📋 Directory structure:"
+tree $PROJECT_NAME || find $PROJECT_NAME -type d | sed 's|[^/]*/|  |g'
+echo ""
+echo "Next: Configure each file step by step"

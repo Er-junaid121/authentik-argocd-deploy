@@ -1,0 +1,22 @@
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Configuration
+aws_region = "ap-south-1"
+cluster_name = "authentik-cluster"
+environment = "dev"
+
+# VPC Configuration
+vpc_cidr = "10.0.0.0/16"
+
+# Database Configuration
+db_instance_class = "db.t3.micro"  # Use db.t3.small or larger for production
+db_name = "authentik"
+db_username = "authentik"
+db_password = "your-secure-database-password-here"  # Change this!
+
+# Authentik Configuration
+authentik_secret_key = "your-authentik-secret-key-must-be-at-least-32-characters-long"  # Change this!
+
+# Example values (replace with your own):
+# db_password = "MySecureDBPassword123!"
+# authentik_secret_key = "this-is-a-very-long-secret-key-for-authentik-security-purposes"
