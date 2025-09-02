@@ -42,3 +42,9 @@ output "kubectl_config_command" {
   description = "Command to configure kubectl"
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${module.eks.cluster_name}"
 }
+
+output "db_password" {
+  description = "Database password for Authentik"
+  value       = var.db_password
+  sensitive   = true
+}

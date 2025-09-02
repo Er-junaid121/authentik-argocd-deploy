@@ -56,6 +56,11 @@ module "eks" {
   # Cluster access entry
   enable_cluster_creator_admin_permissions = true
   
+  # EKS API endpoint access
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_private_access = true
+  cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]
+  
   cluster_addons = {
     coredns                = {}
     eks-pod-identity-agent = {}
@@ -193,104 +198,5 @@ resource "aws_elasticache_replication_group" "authentik" {
   }
 }
 
-# Kubernetes namespaces
-resource "kubernetes_namespace" "argocd" {
-  depends_on = [module.eks]
-  
-  metadata {
-    name = "argocd"
-  }
-}
-
-resource "kubernetes_namespace" "authentik" {
-  depends_on = [module.eks]
-  
-  metadata {
-    name = "authentik"
-  }
-}
-
-# Secrets for Authentik
-resource "kubernetes_secret" "authentik_db" {
-  depends_on = [kubernetes_namespace.authentik]
-  
-  metadata {
-    name      = "authentik-db-secret"
-    namespace = "authentik"
-  }
-
-  data = {
-    AUTHENTIK_POSTGRESQL__HOST     = aws_db_instance.authentik.address
-    AUTHENTIK_POSTGRESQL__NAME     = aws_db_instance.authentik.db_name
-    AUTHENTIK_POSTGRESQL__USER     = aws_db_instance.authentik.username
-    AUTHENTIK_POSTGRESQL__PASSWORD = aws_db_instance.authentik.password
-  }
-
-  type = "Opaque"
-}
-
-resource "kubernetes_secret" "authentik_redis" {
-  depends_on = [kubernetes_namespace.authentik]
-  
-  metadata {
-    name      = "authentik-redis-secret"
-    namespace = "authentik"
-  }
-
-  data = {
-    AUTHENTIK_REDIS__HOST = aws_elasticache_replication_group.authentik.primary_endpoint_address
-  }
-
-  type = "Opaque"
-}
-
-resource "kubernetes_secret" "authentik_secret_key" {
-  depends_on = [kubernetes_namespace.authentik]
-  
-  metadata {
-    name      = "authentik-secret-key"
-    namespace = "authentik"
-  }
-
-  data = {
-    AUTHENTIK_SECRET_KEY = var.authentik_secret_key
-  }
-
-  type = "Opaque"
-}
-
-# ArgoCD Installation
-resource "helm_release" "argocd" {
-  depends_on = [kubernetes_namespace.argocd]
-  
-  name       = "argocd"
-  repository = "https://argoproj.github.io/argo-helm"
-  chart      = "argo-cd"
-  version    = "7.6.12"
-  namespace  = "argocd"
-
-  set {
-    name  = "server.service.type"
-    value = "LoadBalancer"
-  }
-
-  set {
-    name  = "server.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type"
-    value = "nlb"
-  }
-
-  set {
-    name  = "server.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-scheme"
-    value = "internet-facing"
-  }
-
-  set {
-    name  = "server.extraArgs[0]"
-    value = "--insecure"
-  }
-
-  set {
-    name  = "configs.params.server\\.insecure"
-    value = "true"
-  }
-}
+# Note: Kubernetes resources moved to deployment script
+# This avoids provider authentication issues during cluster creation

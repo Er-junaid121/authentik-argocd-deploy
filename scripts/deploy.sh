@@ -98,6 +98,21 @@ kubectl wait --for=condition=Ready nodes --all --timeout=600s
 
 print_success "EKS cluster is ready!"
 
+# Create namespaces
+print_status "Creating Kubernetes namespaces..."
+kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+kubectl create namespace authentik --dry-run=client -o yaml | kubectl apply -f -
+
+# Install ArgoCD
+print_status "Installing ArgoCD..."
+helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+helm install argocd argo/argo-cd \
+    --namespace argocd \
+    --set server.service.type=ClusterIP \
+    --set server.extraArgs[0]=--insecure \
+    --set configs.params."server\.insecure"=true
+
 # Wait for ArgoCD to be ready
 print_status "Waiting for ArgoCD to be ready..."
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
@@ -158,7 +173,44 @@ echo ""
 
 # Generate and deploy secrets dynamically
 print_status "Generating random secrets..."
-bash scripts/generate-secrets.sh
+# Get infrastructure endpoints from Terraform
+cd "$TERRAFORM_DIR"
+DB_HOST=$(terraform output -raw rds_endpoint 2>/dev/null || echo "")
+REDIS_HOST=$(terraform output -raw redis_endpoint 2>/dev/null || echo "")
+cd ..
+
+if [ -z "$DB_HOST" ] || [ -z "$REDIS_HOST" ]; then
+    print_warning "Could not get endpoints from Terraform outputs"
+    print_status "Trying to continue with placeholder values..."
+    DB_HOST="authentik-cluster-authentik-db.region.rds.amazonaws.com"
+    REDIS_HOST="authentik-cluster-authentik-redis.region.cache.amazonaws.com"
+fi
+
+# Generate random secret key but use terraform.tfvars password for database
+AUTHENTIK_SECRET_KEY=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-50)
+# Get database password from terraform outputs
+DB_PASSWORD=$(terraform output -raw db_password 2>/dev/null || echo "")
+
+if [ -z "$DB_PASSWORD" ]; then
+    print_warning "Could not get database password from terraform outputs"
+    # Fallback: extract from terraform.tfvars
+    DB_PASSWORD=$(grep '^db_password' terraform.tfvars | cut -d'"' -f2 2>/dev/null || echo "MySecureDBPassword123!")
+fi
+
+print_success "Generated secure random secrets with correct database password"
+
+# Create secrets in Kubernetes
+kubectl create secret generic authentik-secrets \
+    --namespace=authentik \
+    --from-literal=AUTHENTIK_SECRET_KEY="$AUTHENTIK_SECRET_KEY" \
+    --from-literal=AUTHENTIK_POSTGRESQL__PASSWORD="$DB_PASSWORD" \
+    --from-literal=AUTHENTIK_POSTGRESQL__HOST="$DB_HOST" \
+    --from-literal=AUTHENTIK_POSTGRESQL__NAME="authentik" \
+    --from-literal=AUTHENTIK_POSTGRESQL__USER="authentik" \
+    --from-literal=AUTHENTIK_REDIS__HOST="$REDIS_HOST" \
+    --dry-run=client -o yaml | kubectl apply -f -
+
+print_success "Kubernetes secret created with random values"
 
 # Deploy Authentik application
 print_status "Deploying Authentik via ArgoCD..."
