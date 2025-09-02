@@ -13,37 +13,32 @@ authentik:
   redis:
     enabled: false
 
-  # Environment variables from secrets
-  env:
-  - name: AUTHENTIK_POSTGRESQL__HOST
-    valueFrom:
+  # Environment variables
+  envValueFrom:
+    AUTHENTIK_POSTGRESQL__HOST:
       secretKeyRef:
         name: authentik-db-secret
         key: AUTHENTIK_POSTGRESQL__HOST
-  - name: AUTHENTIK_POSTGRESQL__NAME
-    valueFrom:
+    AUTHENTIK_POSTGRESQL__NAME:
       secretKeyRef:
         name: authentik-db-secret
         key: AUTHENTIK_POSTGRESQL__NAME
-  - name: AUTHENTIK_POSTGRESQL__USER
-    valueFrom:
+    AUTHENTIK_POSTGRESQL__USER:
       secretKeyRef:
         name: authentik-db-secret
         key: AUTHENTIK_POSTGRESQL__USER
-  - name: AUTHENTIK_POSTGRESQL__PASSWORD
-    valueFrom:
+    AUTHENTIK_POSTGRESQL__PASSWORD:
       secretKeyRef:
         name: authentik-db-secret
         key: AUTHENTIK_POSTGRESQL__PASSWORD
-  - name: AUTHENTIK_REDIS__HOST
-    valueFrom:
+    AUTHENTIK_REDIS__HOST:
       secretKeyRef:
         name: authentik-redis-secret
         key: AUTHENTIK_REDIS__HOST
-  - name: AUTHENTIK_LISTEN__HTTP
-    value: "0.0.0.0:9000"
-  - name: AUTHENTIK_LISTEN__HTTPS
-    value: "0.0.0.0:9443"
+  
+  envFrom:
+    AUTHENTIK_LISTEN__HTTP: "0.0.0.0:9000"
+    AUTHENTIK_LISTEN__HTTPS: "0.0.0.0:9443"
 
 server:
   replicas: 1
