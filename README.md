@@ -7,8 +7,9 @@ This project deploys Authentik (identity provider) via ArgoCD (GitOps) on AWS EK
 - **EKS Cluster**: Kubernetes cluster with managed node groups
 - **PostgreSQL**: Amazon RDS for Authentik database
 - **Redis**: Amazon ElastiCache for Authentik caching
-- **ArgoCD**: GitOps deployment and management
-- **Authentik**: Identity and access management
+- **ArgoCD**: GitOps deployment and management (ClusterIP + port-forward)
+- **Authentik**: Identity and access management (via NGINX ingress)
+- **NGINX Ingress**: Single LoadBalancer for cost optimization
 
 ## Prerequisites
 
@@ -72,23 +73,29 @@ chmod +x scripts/deploy.sh
 ./scripts/deploy.sh
 ```
 
-### 5. Deploy Authentik via ArgoCD
+### 5. Deploy Authentik and Ingress
 
 After the infrastructure is ready:
 
 ```bash
+# Deploy Authentik via ArgoCD
 kubectl apply -f argocd/applications/authentik.yaml
+
+# Apply ingress resources
+kubectl apply -f k8s-manifests/ingress-resources.yaml
 ```
 
 ## Access
 
-### ArgoCD
-- Get the LoadBalancer URL: `kubectl get svc argocd-server -n argocd`
+### ArgoCD (Port-Forward Access)
+- Port-forward: `kubectl port-forward svc/argocd-server -n argocd 8080:80`
+- URL: `http://localhost:8080`
 - Username: `admin`
 - Password: `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`
 
-### Authentik
-- Get the LoadBalancer URL: `kubectl get svc authentik-server -n authentik`
+### Authentik (Ingress Access)
+- Get the NGINX LoadBalancer URL: `kubectl get svc ingress-nginx-controller -n ingress-nginx`
+- Access Authentik via the LoadBalancer URL
 - Follow Authentik's setup wizard on first access
 
 ## Project Structure
@@ -104,6 +111,9 @@ authentik-argocd-aws/
 ├── argocd/                 # ArgoCD configurations
 │   ├── applications/       # ArgoCD applications
 │   └── charts/authentik/   # Authentik Helm chart
+├── k8s-manifests/          # Kubernetes manifests
+│   ├── ingress-resources.yaml  # Ingress configurations
+│   └── nginx-ingress.yaml      # NGINX ingress setup
 ├── scripts/                # Deployment scripts
 │   ├── deploy.sh          # Main deployment script
 │   └── cleanup.sh         # Cleanup script
@@ -155,12 +165,14 @@ variable "vpc_cidr" {
 2. **Network Security**
    - Private subnets for EKS nodes
    - Security groups with minimal access
+   - Single LoadBalancer reduces attack surface
 
 3. **Production Recommendations**
-   - Enable SSL/TLS certificates
+   - Enable SSL/TLS certificates for ingress
    - Use AWS Secrets Manager
    - Enable audit logging
    - Set up monitoring
+   - Configure proper DNS for ingress
 
 ## Monitoring
 
@@ -176,8 +188,14 @@ kubectl get applications -n argocd
 # Check Authentik pods
 kubectl get pods -n authentik
 
+# Check NGINX ingress controller
+kubectl get pods -n ingress-nginx
+
 # View ArgoCD dashboard
-kubectl port-forward svc/argocd-server -n argocd 8080:443
+kubectl port-forward svc/argocd-server -n argocd 8080:80
+
+# Get Authentik URL
+kubectl get svc ingress-nginx-controller -n ingress-nginx
 ```
 
 ## Troubleshooting
