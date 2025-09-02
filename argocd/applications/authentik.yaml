@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR_USERNAME/authentik-argocd-aws # Update this!
+    repoURL: https://github.com/Er-junaid121/authentik-argocd-deploy.git
     targetRevision: HEAD
     path: argocd/charts/authentik
     helm:
