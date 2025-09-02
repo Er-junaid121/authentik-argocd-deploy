@@ -31,3 +31,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+*.claude*
+
+# Secrets (never commit)
+k8s-manifests/secrets/
+*.secret.yaml
+*-secrets.yaml

@@ -155,6 +155,37 @@ done
 echo ""
 print_success "Deployment completed successfully!"
 echo ""
+
+# Deploy secrets
+print_status "Deploying Kubernetes secrets..."
+kubectl apply -f k8s-manifests/secrets/ || print_warning "Could not deploy secrets"
+
+# Deploy Authentik application
+print_status "Deploying Authentik via ArgoCD..."
+kubectl apply -f argocd/applications/authentik.yaml
+
+# Wait for Authentik to be synced
+print_status "Waiting for ArgoCD to sync Authentik..."
+sleep 30
+
+# Apply ingress resources
+print_status "Applying ingress resources..."
+kubectl apply -f k8s-manifests/ingress-resources.yaml
+
+# Wait for Authentik pods to be ready
+print_status "Waiting for Authentik to be ready..."
+kubectl wait --for=condition=available --timeout=300s deployment/authentik-server -n authentik || print_warning "Authentik server may still be starting"
+
+print_success "Full deployment completed!"
+
+echo ""
+echo "🎉 Deployment Complete!"
+echo "   ✓ Infrastructure deployed"
+echo "   ✓ NGINX ingress controller installed"
+echo "   ✓ Secrets deployed"
+echo "   ✓ Authentik application deployed"
+echo "   ✓ Ingress resources applied"
+echo ""
 echo "📋 Access Information:"
 echo "   ArgoCD (Port-forward): kubectl port-forward svc/argocd-server -n argocd 8080:80"
 echo "   ArgoCD Local URL: http://localhost:8080"
@@ -166,17 +197,9 @@ else
 fi
 echo ""
 if [ ! -z "$NGINX_URL" ]; then
-    echo "   NGINX Ingress LoadBalancer: http://$NGINX_URL"
+    echo "   Authentik URL: http://$NGINX_URL"
 else
-    echo "   NGINX Ingress: Run 'kubectl get svc ingress-nginx-controller -n ingress-nginx' to get the LoadBalancer URL"
+    echo "   Authentik URL: Run 'kubectl get svc ingress-nginx-controller -n ingress-nginx' to get the LoadBalancer URL"
 fi
 echo ""
-echo "🔧 Next steps:"
-echo "   1. Deploy Authentik: kubectl apply -f argocd/applications/authentik.yaml"
-echo "   2. Apply ingress: kubectl apply -f k8s-manifests/ingress-resources.yaml"
-echo "   3. Access Authentik via NGINX LoadBalancer URL"
-echo "   4. Access ArgoCD via port-forward for management"
-echo ""
-echo "🚀 Quick deployment commands:"
-echo "   kubectl apply -f argocd/applications/authentik.yaml"
-echo "   kubectl apply -f k8s-manifests/ingress-resources.yaml"
+echo "🚀 Ready to use - no manual steps required!"

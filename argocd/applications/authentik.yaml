@@ -18,14 +18,9 @@ spec:
             enabled: false
           redis:
             enabled: false
-          secret_key: "this-is-a-very-long-secret-key-for-authentik-security-purposes"
-          postgresql:
-            host: "authentik-cluster-authentik-db.cjm8q4caabvj.ap-south-1.rds.amazonaws.com"
-            name: "authentik"
-            user: "authentik"
-            password: "MySecureDBPassword123!"
-          redis:
-            host: "authentik-cluster-authentik-redis.qsblbh.ng.0001.aps1.cache.amazonaws.com"
+        envFrom:
+        - secretRef:
+            name: authentik-secrets
         server:
           replicas: 1
           service:

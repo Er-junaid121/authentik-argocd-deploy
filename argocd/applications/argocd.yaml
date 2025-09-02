@@ -1,0 +1,30 @@
+# ArgoCD Self-Management Application (Optional)
+# This file can be used to manage ArgoCD itself via GitOps
+# Currently not used as ArgoCD is installed via Helm directly
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-cd
+    targetRevision: 5.46.8
+    helm:
+      values: |
+        server:
+          service:
+            type: ClusterIP
+          insecure: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

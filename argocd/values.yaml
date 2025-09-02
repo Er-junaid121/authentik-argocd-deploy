@@ -1,0 +1,18 @@
+# ArgoCD Values Configuration
+# This file can be used to customize ArgoCD installation if needed
+
+# Example ArgoCD server configuration
+server:
+  # Enable insecure mode for development (disable for production)
+  insecure: true
+  
+  # Service configuration
+  service:
+    type: ClusterIP  # Changed from LoadBalancer to use ingress
+
+# Example repository configuration
+configs:
+  repositories:
+    - url: https://charts.goauthentik.io
+      name: authentik
+      type: helm
