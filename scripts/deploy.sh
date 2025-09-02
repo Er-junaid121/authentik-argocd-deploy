@@ -156,9 +156,9 @@ echo ""
 print_success "Deployment completed successfully!"
 echo ""
 
-# Deploy secrets
-print_status "Deploying Kubernetes secrets..."
-kubectl apply -f k8s-manifests/secrets/ || print_warning "Could not deploy secrets"
+# Generate and deploy secrets dynamically
+print_status "Generating random secrets..."
+bash scripts/generate-secrets.sh
 
 # Deploy Authentik application
 print_status "Deploying Authentik via ArgoCD..."
@@ -203,3 +203,5 @@ else
 fi
 echo ""
 echo "🚀 Ready to use - no manual steps required!"
+echo ""
+echo "🔍 To view secrets later, run: ./scripts/show-secrets.sh"
