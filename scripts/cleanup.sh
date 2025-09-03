@@ -50,9 +50,11 @@ aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME 2>/dev/null 
 # Change to project root directory
 cd "$(dirname "$0")/.."
 
-# Delete NGINX ingress controller
-print_status "Deleting NGINX ingress controller..."
-helm uninstall ingress-nginx -n ingress-nginx || print_warning "Could not delete NGINX ingress controller"
+# Delete Helm releases
+print_status "Deleting Helm releases..."
+helm uninstall authentik -n authentik 2>/dev/null || print_warning "Could not delete Authentik Helm release"
+helm uninstall ingress-nginx -n ingress-nginx 2>/dev/null || print_warning "Could not delete NGINX ingress controller"
+helm uninstall argocd -n argocd 2>/dev/null || print_warning "Could not delete ArgoCD"
 
 # Delete ingress resources
 print_status "Deleting ingress resources..."

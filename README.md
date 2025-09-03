@@ -8,7 +8,7 @@ This project deploys Authentik (identity provider) via ArgoCD (GitOps) on AWS EK
 - **PostgreSQL**: Amazon RDS for Authentik database
 - **Redis**: Amazon ElastiCache for Authentik caching
 - **ArgoCD**: GitOps deployment and management (ClusterIP + port-forward)
-- **Authentik**: Identity and access management (via NGINX ingress)
+- **Authentik**: Identity and access management (direct Helm install + NGINX ingress)
 - **NGINX Ingress**: Single LoadBalancer for cost optimization
 
 ## Prerequisites
@@ -87,7 +87,7 @@ The script automatically:
 - Configures kubectl and waits for cluster readiness
 - Installs ArgoCD and NGINX ingress controller
 - Generates secure random secrets with correct database password
-- Deploys Authentik application via ArgoCD
+- Installs Authentik directly with Helm (more reliable than ArgoCD)
 - Applies ingress resources
 - Provides all access information
 

@@ -214,13 +214,39 @@ kubectl create secret generic authentik-secrets \
 
 print_success "Kubernetes secret created with random values"
 
-# Deploy Authentik application
-print_status "Deploying Authentik via ArgoCD..."
-kubectl apply -f argocd/applications/authentik.yaml
+# Install Authentik directly with Helm (more reliable than ArgoCD for initial deployment)
+print_status "Installing Authentik directly with Helm..."
+helm repo add authentik https://charts.goauthentik.io
+helm repo update
 
-# Wait for Authentik to be synced
-print_status "Waiting for ArgoCD to sync Authentik..."
-sleep 30
+# Install Authentik with proper configuration
+helm install authentik authentik/authentik \
+    --namespace authentik \
+    --set authentik.postgresql.enabled=false \
+    --set authentik.redis.enabled=false \
+    --set global.env[0].name=AUTHENTIK_SECRET_KEY \
+    --set global.env[0].valueFrom.secretKeyRef.name=authentik-secrets \
+    --set global.env[0].valueFrom.secretKeyRef.key=AUTHENTIK_SECRET_KEY \
+    --set global.env[1].name=AUTHENTIK_POSTGRESQL__HOST \
+    --set global.env[1].valueFrom.secretKeyRef.name=authentik-secrets \
+    --set global.env[1].valueFrom.secretKeyRef.key=AUTHENTIK_POSTGRESQL__HOST \
+    --set global.env[2].name=AUTHENTIK_POSTGRESQL__NAME \
+    --set global.env[2].valueFrom.secretKeyRef.name=authentik-secrets \
+    --set global.env[2].valueFrom.secretKeyRef.key=AUTHENTIK_POSTGRESQL__NAME \
+    --set global.env[3].name=AUTHENTIK_POSTGRESQL__USER \
+    --set global.env[3].valueFrom.secretKeyRef.name=authentik-secrets \
+    --set global.env[3].valueFrom.secretKeyRef.key=AUTHENTIK_POSTGRESQL__USER \
+    --set global.env[4].name=AUTHENTIK_POSTGRESQL__PASSWORD \
+    --set global.env[4].valueFrom.secretKeyRef.name=authentik-secrets \
+    --set global.env[4].valueFrom.secretKeyRef.key=AUTHENTIK_POSTGRESQL__PASSWORD \
+    --set global.env[5].name=AUTHENTIK_REDIS__HOST \
+    --set global.env[5].valueFrom.secretKeyRef.name=authentik-secrets \
+    --set global.env[5].valueFrom.secretKeyRef.key=AUTHENTIK_REDIS__HOST \
+    --set server.replicas=1 \
+    --set server.service.type=ClusterIP \
+    --set worker.replicas=1
+
+print_success "Authentik installed directly with Helm"
 
 # Apply ingress resources
 print_status "Applying ingress resources..."
