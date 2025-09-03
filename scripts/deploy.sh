@@ -214,39 +214,37 @@ kubectl create secret generic authentik-secrets \
 
 print_success "Kubernetes secret created with random values"
 
-# Install Authentik directly with Helm (more reliable than ArgoCD for initial deployment)
-print_status "Installing Authentik directly with Helm..."
-helm repo add authentik https://charts.goauthentik.io
-helm repo update
+# Deploy Authentik via ArgoCD
+print_status "Deploying Authentik via ArgoCD..."
+kubectl apply -f argocd/applications/authentik.yaml
 
-# Install Authentik with proper configuration
-helm install authentik authentik/authentik \
-    --namespace authentik \
-    --set authentik.postgresql.enabled=false \
-    --set authentik.redis.enabled=false \
-    --set global.env[0].name=AUTHENTIK_SECRET_KEY \
-    --set global.env[0].valueFrom.secretKeyRef.name=authentik-secrets \
-    --set global.env[0].valueFrom.secretKeyRef.key=AUTHENTIK_SECRET_KEY \
-    --set global.env[1].name=AUTHENTIK_POSTGRESQL__HOST \
-    --set global.env[1].valueFrom.secretKeyRef.name=authentik-secrets \
-    --set global.env[1].valueFrom.secretKeyRef.key=AUTHENTIK_POSTGRESQL__HOST \
-    --set global.env[2].name=AUTHENTIK_POSTGRESQL__NAME \
-    --set global.env[2].valueFrom.secretKeyRef.name=authentik-secrets \
-    --set global.env[2].valueFrom.secretKeyRef.key=AUTHENTIK_POSTGRESQL__NAME \
-    --set global.env[3].name=AUTHENTIK_POSTGRESQL__USER \
-    --set global.env[3].valueFrom.secretKeyRef.name=authentik-secrets \
-    --set global.env[3].valueFrom.secretKeyRef.key=AUTHENTIK_POSTGRESQL__USER \
-    --set global.env[4].name=AUTHENTIK_POSTGRESQL__PASSWORD \
-    --set global.env[4].valueFrom.secretKeyRef.name=authentik-secrets \
-    --set global.env[4].valueFrom.secretKeyRef.key=AUTHENTIK_POSTGRESQL__PASSWORD \
-    --set global.env[5].name=AUTHENTIK_REDIS__HOST \
-    --set global.env[5].valueFrom.secretKeyRef.name=authentik-secrets \
-    --set global.env[5].valueFrom.secretKeyRef.key=AUTHENTIK_REDIS__HOST \
-    --set server.replicas=1 \
-    --set server.service.type=ClusterIP \
-    --set worker.replicas=1
+# Wait for ArgoCD to sync Authentik
+print_status "Waiting for ArgoCD to sync Authentik..."
+for i in {1..20}; do
+    SYNC_STATUS=$(kubectl get application authentik -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+    HEALTH_STATUS=$(kubectl get application authentik -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+    
+    if [ "$SYNC_STATUS" = "Synced" ] && [ "$HEALTH_STATUS" = "Healthy" ]; then
+        print_success "Authentik application synced and healthy"
+        break
+    fi
+    
+    echo "Waiting for sync... Status: $SYNC_STATUS, Health: $HEALTH_STATUS ($i/20)"
+    
+    # Force sync if stuck
+    if [ $i -eq 10 ]; then
+        print_status "Forcing ArgoCD sync..."
+        kubectl patch application authentik -n argocd --type merge --patch '{"operation":{"sync":{}}}' 2>/dev/null || true
+    fi
+    
+    sleep 15
+done
 
-print_success "Authentik installed directly with Helm"
+# Check if sync was successful
+FINAL_SYNC_STATUS=$(kubectl get application authentik -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+if [ "$FINAL_SYNC_STATUS" != "Synced" ]; then
+    print_warning "ArgoCD sync may have issues. Check: kubectl describe application authentik -n argocd"
+fi
 
 # Apply ingress resources
 print_status "Applying ingress resources..."

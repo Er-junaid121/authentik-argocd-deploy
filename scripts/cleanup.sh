@@ -50,9 +50,12 @@ aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME 2>/dev/null 
 # Change to project root directory
 cd "$(dirname "$0")/.."
 
+# Delete ArgoCD applications first
+print_status "Deleting ArgoCD applications..."
+kubectl delete -f "argocd/applications/authentik.yaml" --ignore-not-found=true || print_warning "Could not delete Authentik application"
+
 # Delete Helm releases
 print_status "Deleting Helm releases..."
-helm uninstall authentik -n authentik 2>/dev/null || print_warning "Could not delete Authentik Helm release"
 helm uninstall ingress-nginx -n ingress-nginx 2>/dev/null || print_warning "Could not delete NGINX ingress controller"
 helm uninstall argocd -n argocd 2>/dev/null || print_warning "Could not delete ArgoCD"
 
