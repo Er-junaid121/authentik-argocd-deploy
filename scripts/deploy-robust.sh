@@ -23,21 +23,13 @@ AWS_REGION=${AWS_REGION:-"ap-south-1"}
 print_status "Project Root: $PROJECT_ROOT"
 print_status "Terraform Dir: $TERRAFORM_DIR"
 
-# Check prerequisites (Windows compatible)
-for cmd in terraform aws kubectl helm; do
+# Check prerequisites
+for cmd in terraform aws kubectl helm openssl; do
     if ! command -v $cmd >/dev/null 2>&1; then
         print_error "$cmd is required but not installed"
         exit 1
     fi
 done
-
-# Check openssl (may be in different location on Windows)
-if ! command -v openssl >/dev/null 2>&1; then
-    if ! command -v openssl.exe >/dev/null 2>&1; then
-        print_error "openssl is required but not installed"
-        exit 1
-    fi
-fi
 print_success "All prerequisites found"
 
 # Check terraform.tfvars
@@ -73,7 +65,7 @@ terraform apply tfplan
 print_success "Infrastructure deployed"
 
 # Get outputs immediately while in terraform directory
-DB_HOST=$(terraform output -raw rds_endpoint 2>/dev/null | cut -d':' -f1 || echo "")
+DB_HOST=$(terraform output -raw rds_endpoint 2>/dev/null || echo "")
 REDIS_HOST=$(terraform output -raw redis_endpoint 2>/dev/null || echo "")
 DB_PASSWORD=$(terraform output -raw db_password 2>/dev/null || echo "")
 
@@ -132,15 +124,7 @@ kubectl wait --namespace ingress-nginx \
 
 # Generate secrets
 print_status "Creating secrets..."
-# Use openssl or openssl.exe depending on availability
-if command -v openssl >/dev/null 2>&1; then
-    AUTHENTIK_SECRET_KEY=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-50)
-elif command -v openssl.exe >/dev/null 2>&1; then
-    AUTHENTIK_SECRET_KEY=$(openssl.exe rand -base64 32 | tr -d "=+/" | cut -c1-50)
-else
-    # Fallback: generate random string
-    AUTHENTIK_SECRET_KEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 50 | head -n 1 2>/dev/null || echo "fallback-secret-key-$(date +%s)")
-fi
+AUTHENTIK_SECRET_KEY=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-50)
 
 kubectl create secret generic authentik-secrets \
     --namespace=authentik \
