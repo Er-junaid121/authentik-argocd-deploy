@@ -189,12 +189,14 @@ fi
 # Generate random secret key but use terraform.tfvars password for database
 AUTHENTIK_SECRET_KEY=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-50)
 # Get database password from terraform outputs
+cd "$TERRAFORM_DIR"
 DB_PASSWORD=$(terraform output -raw db_password 2>/dev/null || echo "")
+cd ..
 
 if [ -z "$DB_PASSWORD" ]; then
     print_warning "Could not get database password from terraform outputs"
     # Fallback: extract from terraform.tfvars
-    DB_PASSWORD=$(grep '^db_password' terraform.tfvars | cut -d'"' -f2 2>/dev/null || echo "MySecureDBPassword123!")
+    DB_PASSWORD=$(grep '^db_password' "$TERRAFORM_DIR/terraform.tfvars" | cut -d'"' -f2 2>/dev/null || echo "MySecureDBPassword123!")
 fi
 
 print_success "Generated secure random secrets with correct database password"
