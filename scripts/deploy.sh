@@ -88,6 +88,9 @@ terraform apply tfplan
 
 print_success "Infrastructure deployed successfully!"
 
+# Return to project root
+cd ..
+
 # Configure kubectl
 print_status "Configuring kubectl..."
 aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
